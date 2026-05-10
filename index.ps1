@@ -1,33 +1,59 @@
-# ===================== 配置区 =====================
+# 配置
+$GameAppID = 1551360
 $AllowKey = "AB6HA-ZGBTZ-W6GM5-AC544-5409V"
-$GameAppID = 1551360   # 极限竞速：地平线5
-# =================================================
 
-# 检测管理员权限
+# 管理员检测
 $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "请以管理员身份运行终端！Win+X 选择终端(管理员)" -ForegroundColor Red
-    Read-Host "按回车退出"
+    Write-Host "请以管理员身份运行！" -ForegroundColor Red
+    Read-Host "回车退出"
     exit
 }
 
 Clear-Host
-Write-Host "===== 地平线5 专属卡密激活工具 =====" -ForegroundColor Cyan
-$InputKey = Read-Host "请输入专属激活卡密"
+Write-Host "===== 地平线5 卡密激活 =====" -ForegroundColor Cyan
+$InputKey = Read-Host "请输入卡密"
 
-# 卡密校验
 if ($InputKey -ne $AllowKey) {
-    Write-Host "`n❌ 卡密错误，激活失败！" -ForegroundColor Red
-    Read-Host "按回车退出"
+    Write-Host "`n❌ 卡密错误" -ForegroundColor Red
+    Read-Host "回车退出"
     exit
 }
 
-Write-Host "`n✅ 卡密验证通过，正在入库 地平线5 ..." -ForegroundColor Green
-Start-Sleep 2
+Write-Host "`n✅ 卡密正确，尝试写入库文件..." -ForegroundColor Green
 
-# 自动拉起Steam入库地平线5
-Start-Process "steam://install/$GameAppID"
+# 自动找Steam路径
+$steamReg = Get-ItemProperty "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam" -ErrorAction SilentlyContinue
+if (-not $steamReg) {
+    Write-Host "❌ 未找到Steam" -ForegroundColor Red
+    Read-Host
+    exit
+}
+$steamPath = $steamReg.InstallLocation
+$libFolder = Join-Path $steamPath "steamapps"
+$manifestPath = Join-Path $libFolder "appmanifest_$GameAppID.acf"
 
-Write-Host "`n🎉 地平线5 激活入库成功！" -ForegroundColor Green
-Write-Host "💡 打开Steam库即可看到游戏，直接安装游玩" -ForegroundColor Yellow
-Read-Host "按回车结束"
+# 写入最小manifest
+$manifestContent = @"
+"AppState"
+{
+    "appid"        "$GameAppID"
+    "Universe"      "1"
+    "StateFlags"    "4"
+    "InstallLocation"  "Forza Horizon 5"
+    "CurrentLanguage"   "english"
+    "SizeOnDisk"        "0"
+    "BytesDownloaded"   "0"
+    "BytesToDownload"   "0"
+}
+"@
+
+try {
+    $manifestContent | Out-File $manifestPath -Encoding ASCII
+    Write-Host "✅ 入库文件写入成功！" -ForegroundColor Green
+    Write-Host "💡 重启Steam → 库中即可看到地平线5（可下载）" -ForegroundColor Yellow
+} catch {
+    Write-Host "❌ 写入失败：$_" -ForegroundColor Red
+}
+
+Read-Host "回车结束"
