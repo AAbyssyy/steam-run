@@ -43,18 +43,45 @@ if (-not $steamPath) {
 
 Write-Host "Steam Found: $steamPath"
 
+# 关键：写 appmanifest + 写 packageinfo（授权）
+$steamapps = Join-Path $steamPath "steamapps"
+$manifestPath = Join-Path $steamapps "appmanifest_$GameAppID.acf"
+
 $manifest = @"
 "AppState"
 {
     "appid" "$GameAppID"
     "Universe" "1"
     "StateFlags" "4"
+    "InstallLocation" "Forza Horizon 5"
+    "SizeOnDisk" "0"
+    "BuildID" "0"
+    "LastUpdated" "0"
+    "LastPlayed" "0"
+    "IsInstalled" "1"
+    "IsUpdating" "0"
+    "IsDownloading" "0"
+    "State" "4"
 }
 "@
 
-$dest = Join-Path $steamPath "steamapps\appmanifest_$GameAppID.acf"
-$manifest | Out-File $dest -Encoding ASCII -Force
+$manifest | Out-File $manifestPath -Encoding ASCII -Force
 
-Write-Host "`n✅ Success! Game added to your library." -ForegroundColor Green
-Write-Host "Restart Steam to see Forza Horizon 5 in your Library."
+# 写入本地授权记录（关键，解决“购买”按钮）
+$packagePath = Join-Path $steamapps "packageinfo_$GameAppID.acf"
+$package = @"
+"PackageState"
+{
+    "appid" "$GameAppID"
+    "packageid" "0"
+    "Universe" "1"
+    "StateFlags" "4"
+    "IsOwned" "1"
+}
+"@
+
+$package | Out-File $packagePath -Encoding ASCII -Force
+
+Write-Host "`n✅ Success! Game added with license." -ForegroundColor Green
+Write-Host "Restart Steam to install Forza Horizon 5."
 pause
