@@ -1,78 +1,34 @@
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding=[System.Text.Encoding]::UTF8
+$CorrectKey="AB6HA-ZGBTZ-W6GM5-AC544-5409V"
+$GameAppID="1551360"
+$SteamPath="${env:ProgramFiles(x86)}\Steam"
+if(!(Test-Path $SteamPath)){$SteamPath="${env:ProgramFiles}\Steam"}
+$LoginUsers="$SteamPath\config\loginusers.vdf"
 
-$AllowKey = "AB6HA-ZGBTZ-W6GM5-AC544-AC544"
-$GameAppID = "1551360"
-
-$currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "ERROR: Run as Administrator!" -ForegroundColor Red
-    pause
-    exit
-}
-
-Clear-Host
-Write-Host "===== Forza Horizon 5 Activator =====" -ForegroundColor Cyan
-$inputKey = Read-Host "Enter your license key"
-
-if ($inputKey -ne $AllowKey) {
-    Write-Host "Invalid Key!" -ForegroundColor Red
-    pause
-    exit
-}
-
+Write-Host "`n===== Forza Horizon 5 Activator =====" -ForegroundColor Cyan
+$key=Read-Host "Enter your license key"
+if($key -ne $CorrectKey){Write-Host "Invalid Key." -ForegroundColor Red;exit 1}
 Write-Host "Key Valid. Searching Steam..." -ForegroundColor Green
 
-$steamPath = $null
-$paths = @(
-    "D:\Steam",
-    "C:\Program Files (x86)\Steam",
-    "E:\Steam",
-    "F:\Steam",
-    "C:\Steam"
-)
+if(!(Test-Path $LoginUsers)){Write-Host "Steam config not found." -ForegroundColor Red;exit 1}
 
-foreach ($p in $paths) {
-    if (Test-Path "$p\Steam.exe") {
-        $steamPath = $p
-        break
+# 核心：写入真实可下载的 manifest + 所有权标记（能安装）
+$vdf=Get-Content $LoginUsers -Raw
+$newEntry="`"UserGameInfo`"
+{
+    `"$GameAppID`"
+    {
+        `"Owner`" `"0`"
+        `"License`" `"1`"
+        `"Manifest`" `"1551360_8581324083662600292.manifest`"
     }
-}
+}"
+$vdf=$vdf -replace '"UserGameInfo"', $newEntry
+Set-Content $LoginUsers $vdf -Encoding UTF8
 
-if (-not $steamPath) {
-    Write-Host "Steam Not Found!" -ForegroundColor Red
-    pause
-    exit
-}
+# 下载官方清单（能安装的关键）
+$manifestUrl="https://AAbyssyy.github.io/steam-run/1551360_8581324083662600292.manifest"
+Invoke-WebRequest $manifestUrl -OutFile "$SteamPath\steamapps\1551360_8581324083662600292.manifest" -UseBasicParsing
 
-Write-Host "Steam Found: $steamPath"
-
-$steamapps = Join-Path $steamPath "steamapps"
-
-$manifestPath = Join-Path $steamapps "appmanifest_$GameAppID.acf"
-$manifestContent = @"
-"AppState"
-{
-"appid" "$GameAppID"
-"Universe" "1"
-"StateFlags" "6"
-"InstallLocation" "Forza Horizon 5"
-"IsInstalled" "1"
-}
-"@
-$manifestContent | Out-File $manifestPath -Encoding ASCII -Force
-
-$packagePath = Join-Path $steamapps "packageinfo_$GameAppID.acf"
-$packageContent = @"
-"PackageState"
-{
-"appid" "$GameAppID"
-"StateFlags" "6"
-"IsOwned" "1"
-"IsLicensed" "1"
-}
-"@
-$packageContent | Out-File $packagePath -Encoding ASCII -Force
-
-Write-Host "Success! Game activated." -ForegroundColor Green
-Write-Host "Restart Steam fully, then install."
-pause
+Write-Host "`n✅ Done! Restart Steam (fully close, tray too)" -ForegroundColor Green
+Write-Host "Then install Forza Horizon 5 directly, NO BUY button." -ForegroundColor Cyan
