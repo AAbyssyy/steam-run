@@ -1,47 +1,71 @@
 chcp 65001 | Out-Null
 $RightKey = "AB6HA-ZGBTZ-W6GM5-AC544-5409V"
-$AppID = 1551360
 
 # 管理员检测
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator")
-if (-not $isAdmin) { Write-Host "请用管理员身份运行" -ForegroundColor Red; pause; exit }
+if (-not $isAdmin) {
+    Write-Host "Please run as Administrator" -ForegroundColor Red
+    pause
+    exit
+}
 
 Clear-Host
-Write-Host "===== 地平线5 终极入库工具 =====" -ForegroundColor Cyan
-$InKey = Read-Host "请输入卡密"
+Write-Host "===== Game Activator =====" -ForegroundColor Cyan
+$InKey = Read-Host "Please enter your key"
 
-if ($InKey -ne $RightKey) { Write-Host "卡密错误！" -ForegroundColor Red; pause; exit }
-Write-Host "`n卡密正确，正在写入授权..." -ForegroundColor Green
+if ($InKey -ne $RightKey) {
+    Write-Host "Wrong key!" -ForegroundColor Red
+    pause
+    exit
+}
 
-# 找Steam路径
+# 加载你的线上游戏库
+try {
+    $lib = Invoke-RestMethod "https://AAbyssyy.github.io/steam-run/games.json"
+    $AppID = $lib.active.appid
+    $GameName = $lib.active.name
+    $InstallDir = $lib.active.folder
+}
+catch {
+    Write-Host "Library load failed" -ForegroundColor Red
+    pause
+    exit
+}
+
+Write-Host "`n✅ Key Correct | Game: $GameName" -ForegroundColor Green
+
+# 自动查找Steam
 $steamPaths = @("C:\Program Files (x86)\Steam","D:\Steam","E:\Steam","F:\Steam","C:\Steam")
 $steamRoot = $null
-foreach ($p in $steamPaths) { if (Test-Path "$p\steam.exe") { $steamRoot = $p; break } }
-if (-not $steamRoot) { Write-Host "未找到Steam！" -ForegroundColor Red; pause; exit }
+foreach ($p in $steamPaths) {
+    if (Test-Path "$p\steam.exe") {
+        $steamRoot = $p
+        break
+    }
+}
 
-# 【核心修复】完整合法的acf文件（之前缺关键字段！）
+if (-not $steamRoot) {
+    Write-Host "Steam Not Found!" -ForegroundColor Red
+    pause
+    exit
+}
+
+# 写入授权文件
 $acfPath = Join-Path $steamRoot "steamapps\appmanifest_$AppID.acf"
 $acfTxt = @"
 "AppState"
 {
-    "appid"        "1551360"
+    "appid"        "$AppID"
     "Universe"     "1"
-    "name"         "Forza Horizon 5"
+    "name"         "$GameName"
     "StateFlags"   "4"
-    "installdir"   "Forza Horizon 5"
-    "LastUpdated"  "0"
-    "UpdateResult" "0"
-    "SizeOnDisk"   "0"
-    "buildid"      "0"
+    "installdir"   "$InstallDir"
     "IsInstalled"  "1"
     "LicenseType"  "1"
 }
 "@
 $acfTxt | Out-File $acfPath -Encoding ASCII -Force
 
-Write-Host "`n✅ 授权写入成功！" -ForegroundColor Green
-Write-Host "`n⚠️  必须严格按以下步骤操作：" -ForegroundColor Yellow
-Write-Host "1. 完全关闭Steam（右下角托盘也要退出）"
-Write-Host "2. 重新打开Steam → 库 → 找到地平线5 → 直接安装"
-Write-Host "3. 无购买按钮，直接下载！"
+Write-Host "`n✅ Activated Success!" -ForegroundColor Green
+Write-Host "Close Steam fully and reopen to install"
 pause
