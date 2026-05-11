@@ -1,75 +1,99 @@
+# 强制编码防乱码
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 chcp 65001 | Out-Null
-$ErrorActionPreference = 'SilentlyContinue'
+$ErrorActionPreference = "SilentlyContinue"
 
 # 配置
-$key = "AB6HA-ZGBTZ-W6GM5-AC544-5409V"
-$appid = "1174180"
-$name = "Red Dead Redemption 2"
-$installdir = "Red Dead Redemption 2"
+$FixKey = "AB6HA-ZGBTZ-W6GM5-AC544-5409V"
+$AppID = "1174180"
+$GameName = "Red Dead Redemption 2"
+$InstallFolder = "Red Dead Redemption 2"
 
-# 管理员
-$admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $admin) {
-    Write-Host "Please run as Administrator" -ForegroundColor Red
-    pause
+# 检测管理员
+$curPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+if(-not $curPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
+{
+    Write-Host "ERROR: Run PowerShell as Administrator!" -ForegroundColor Red
+    Read-Host "Press Enter to exit"
     exit
 }
 
 Clear-Host
-Write-Host "===== Red Dead Redemption 2 Activator =====" -ForegroundColor Cyan
-$input = Read-Host "Enter your license key"
+Write-Host "===== RDR2 OneKey Activator =====" -ForegroundColor Cyan
+$InputKey = Read-Host "Enter your license key"
 
-if ($input -ne $key) {
-    Write-Host "Invalid Key" -ForegroundColor Red
-    pause
+if($InputKey -ne $FixKey)
+{
+    Write-Host "Invalid License Key!" -ForegroundColor Red
+    Read-Host "Press Enter"
     exit
 }
 
-Write-Host "Key Valid, Searching Steam..." -ForegroundColor Green
+Write-Host "Key Verified. Processing..." -ForegroundColor Green
 
-# 找Steam
-$paths = @("C:\Program Files (x86)\Steam", "D:\Steam", "E:\Steam", "F:\Steam")
-$steam = $null
-foreach ($p in $paths) {
-    if (Test-Path "$p\steam.exe") {
-        $steam = $p
+# 自动遍历找Steam路径
+$steamPaths = @("C:\Program Files (x86)\Steam","D:\Steam","E:\Steam","F:\Steam","C:\Steam")
+$steamRoot = $null
+foreach($path in $steamPaths)
+{
+    if(Test-Path "$path\Steam.exe")
+    {
+        $steamRoot = $path
         break
     }
 }
 
-if (-not $steam) {
-    Write-Host "Steam Not Found" -ForegroundColor Red
-    pause
+if(-not $steamRoot)
+{
+    Write-Host "Steam Not Found On System!" -ForegroundColor Red
+    Read-Host "Press Enter"
     exit
 }
+Write-Host "Steam Found: $steamRoot"
 
-# 关闭Steam
-taskkill /F /IM steam.exe >$null 2>&1
-Start-Sleep 2
+# 强制关闭Steam
+Stop-Process -Name Steam -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
 
-# 写入完整ACF
-$acf = Join-Path $steam "steamapps\appmanifest_$appid.acf"
-@"
+# 写入完整可安装ACF（复刻Onekey有效结构）
+$acfFullPath = Join-Path $steamRoot "steamapps\appmanifest_$AppID.acf"
+$acfContent = @"
 "AppState"
 {
-"appid" "$appid"
-"Universe" "1"
-"name" "$name"
-"StateFlags" "6"
-"installdir" "$installdir"
-"IsInstalled" "1"
-"LicenseType" "1"
-"AllowDownload" "1"
-"Depot"
-{
-"1174181" { "Manifest" "0" }
-"1174182" { "Manifest" "0" }
-"1174183" { "Manifest" "0" }
-"1174184" { "Manifest" "0" }
+    "appid"        "$AppID"
+    "Universe"     "1"
+    "name"         "$GameName"
+    "StateFlags"   "6"
+    "installdir"   "$InstallFolder"
+    "IsInstalled"  "1"
+    "LicenseType"  "1"
+    "AllowDownload" "1"
+    "Depot"
+    {
+        "1174181"
+        {
+            "Manifest" "0"
+        }
+        "1174182"
+        {
+            "Manifest" "0"
+        }
+        "1174183"
+        {
+            "Manifest" "0"
+        }
+        "1174184"
+        {
+            "Manifest" "0"
+        }
+    }
 }
-}
-"@ | Out-File $acf -Encoding ASCII -Force
+"@
 
-Write-Host "Success! Game Activated." -ForegroundColor Green
-Write-Host "Close Steam fully, then install directly."
-pause
+$acfContent | Out-File $acfFullPath -Encoding ASCII -Force
+
+Write-Host "`n✅ Activate Success!" -ForegroundColor Green
+Write-Host "1. Fully exit Steam from tray"
+Write-Host "2. Reopen Steam, install game directly"
+Write-Host "3. No purchase button"
+Read-Host "Press Enter"
